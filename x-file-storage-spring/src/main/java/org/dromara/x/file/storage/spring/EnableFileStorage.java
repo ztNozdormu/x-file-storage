@@ -9,5 +9,6 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 @Documented
-@Import({FileStorageAutoConfiguration.class, SpringFileStorageProperties.class})
+@Import({FileStorageAutoConfiguration.class, SpringFileStorageProperties.class, FileStorageExtensionConfiguration.class
+})
 public @interface EnableFileStorage {}

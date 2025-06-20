@@ -128,6 +128,7 @@
         <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
         <palantir-java-format.version>2.38.0</palantir-java-format.version>
         <!--endregion-->
+        <mybatis-plus.version>3.4.0</mybatis-plus.version>
     </properties>
 
     <dependencyManagement>
@@ -290,6 +291,11 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-storage-file-datalake</artifactId>
                 <version>${azure-storage-file-datalake.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
