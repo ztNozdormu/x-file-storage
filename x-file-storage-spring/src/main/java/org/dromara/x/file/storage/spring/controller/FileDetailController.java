@@ -85,4 +85,6 @@ public class FileDetailController {
         log.info("文件 MD5 对比通过");
         return fileInfo;
     }
+
+    // 增加本地存储方式临时访问路径生成
 }

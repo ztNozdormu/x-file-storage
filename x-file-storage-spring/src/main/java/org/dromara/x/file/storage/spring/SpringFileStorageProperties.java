@@ -91,6 +91,14 @@ public class SpringFileStorageProperties {
      */
     private Boolean enableMultipartFileWrapper = true;
     /**
+     * oss文件冻结周期 默认1天
+     */
+    private int thawCycles = 1;
+    /**
+     * oss文件归档周期 默认30天
+     */
+    private int archivingCycles;
+    /**
      * 本地存储
      */
     @Deprecated

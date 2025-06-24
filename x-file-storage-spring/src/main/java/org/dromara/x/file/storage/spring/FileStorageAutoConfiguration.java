@@ -20,7 +20,14 @@ import org.dromara.x.file.storage.core.tika.TikaContentTypeDetect;
 import org.dromara.x.file.storage.core.tika.TikaFactory;
 import org.dromara.x.file.storage.spring.SpringFileStorageProperties.SpringLocalConfig;
 import org.dromara.x.file.storage.spring.SpringFileStorageProperties.SpringLocalPlusConfig;
+import org.dromara.x.file.storage.spring.dao.FileDetailMapper;
+import org.dromara.x.file.storage.spring.dao.FilePartDetailMapper;
 import org.dromara.x.file.storage.spring.file.MultipartFileWrapperAdapter;
+import org.dromara.x.file.storage.spring.service.FileDetailService;
+import org.dromara.x.file.storage.spring.service.FilePartDetailService;
+import org.dromara.x.file.storage.spring.service.XFileExtensionService;
+import org.dromara.x.file.storage.spring.service.impl.XFileExtensionServiceImpl;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -35,6 +42,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Slf4j
 @Configuration
 @ConditionalOnMissingBean(FileStorageService.class)
+@MapperScan("org.dromara.x.file.storage.spring.dao")
 public class FileStorageAutoConfiguration {
 
     @Autowired
@@ -42,6 +50,33 @@ public class FileStorageAutoConfiguration {
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    // 自动注册分片服务
+    @Bean
+    @ConditionalOnMissingBean
+    public FilePartDetailService filePartDetailService(FilePartDetailMapper filePartDetailMapper) {
+        return new FilePartDetailService(filePartDetailMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public FileDetailService fileDetailService(
+            FilePartDetailService filePartDetailService, FileDetailMapper fileDetailMapper) {
+        FileDetailService service = new FileDetailService(fileDetailMapper);
+        service.setFilePartDetailService(filePartDetailService);
+        return service;
+    }
+
+    // 注册扩展服务，并确保依赖注入
+    @Bean
+    @ConditionalOnMissingBean
+    public XFileExtensionService xFileExtensionServiceImpl(
+            FileDetailService fileDetailService, FileStorageService fileStorageService) {
+        XFileExtensionServiceImpl impl = new XFileExtensionServiceImpl();
+        impl.setFileDetailService(fileDetailService);
+        impl.setFileStorageService(fileStorageService);
+        return impl;
+    }
 
     /**
      * 当没有找到 FileRecorder 时使用默认的 FileRecorder

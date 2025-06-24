@@ -163,6 +163,18 @@ public class FileDetail {
     @TableField(value = "create_time")
     private Date createTime;
 
+    /**
+     * 是否为临时文件，1：临时，0：永久 默认 0
+     */
+    @TableField(value = "is_temporary")
+    private Integer temporary;
+
+    /**
+     * 过期时间
+     */
+    @TableField(value = "expire_time")
+    private Date expireTime;
+
     public static final String COL_ID = "id";
 
     public static final String COL_URL = "url";
@@ -212,4 +224,8 @@ public class FileDetail {
     public static final String COL_UPLOAD_STATUS = "upload_status";
 
     public static final String COL_CREATE_TIME = "create_time";
+
+    public static final String COL_TEMPORARY = "is_temporary";
+
+    public static final String COL_EXPIRE_TIME = "expire_time";
 }
