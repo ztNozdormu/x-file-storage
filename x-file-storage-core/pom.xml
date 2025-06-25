@@ -160,6 +160,12 @@
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-crypto</artifactId>
+            <version>5.8.28</version>
+        </dependency>
+
         <!-- Tika -->
         <dependency>
             <groupId>org.apache.tika</groupId>

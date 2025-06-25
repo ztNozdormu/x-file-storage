@@ -5,9 +5,12 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.time.Instant;
 import java.util.*;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +18,7 @@ import org.apache.tika.utils.StringUtils;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.FileStorageService;
 import org.dromara.x.file.storage.core.constant.Constant;
+import org.dromara.x.file.storage.core.enums.DownloadFlagEnum;
 import org.dromara.x.file.storage.core.enums.ImageFileTypeEnum;
 import org.dromara.x.file.storage.core.enums.TemporaryTypeEnum;
 import org.dromara.x.file.storage.core.platform.FileStorage;
@@ -41,6 +45,9 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         this.fileStorageService = fileStorageService;
     }
 
+    public void setSpringFileStorageProperties(SpringFileStorageProperties fileStorageProperties) {
+        this.fileStorageProperties = fileStorageProperties;
+    }
     @SneakyThrows
     @Override
     public String createByMetadata(Map<String, String> metadata) {
@@ -111,10 +118,9 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String generatePresignedUrl(FileInfo fileInfo) {
-        // TODO 本地存储方式后续实现临时访问机制
+
         if (fileInfo.getPlatform().toLowerCase().contains("local")) {
-            // 临时处理访问方式
-            return fileStorageProperties.getLocalPlus().get(0).getDomain()+fileInfo.getPath()+fileInfo.getFilename();
+            return getLocalPresignedUrl(fileInfo,604800);
         }
         FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
 
@@ -134,6 +140,28 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         return fileStorage.generatePresignedUrl(pretreatment).getUrl();
     }
 
+    /**
+     * 自定义临时访问链接
+     * @param fileInfo     文档信息对象
+     * @param expireSecond 过期时间
+     * @return String      临时访问链接地址
+     * @throws Exception   异常信息对象
+     */
+    String getLocalPresignedUrl(FileInfo fileInfo, long expireSecond) {
+        // 默认七天
+        if(expireSecond == 0){
+            expireSecond = 604800;
+        }
+
+        String ossKey = fileInfo.getPath() + fileInfo.getFilename();
+
+        long expire = Instant.now().plusSeconds(expireSecond).getEpochSecond();
+        String raw = DownloadFlagEnum.NOT_DOWNLOAD.value() + expire + ossKey + Constant.FILE_DOWNLOAD_URI_SALT;
+        String md5 = SecureUtil.md5(raw);
+
+        return String.format(fileStorageProperties.getLocalPlus().get(0).getDomain() + "/xfile/tempview?downloadFlag=%s&key=%s&expire=%s&signature=%s&storageTypeEnum=%s", DownloadFlagEnum.NOT_DOWNLOAD.value(), ossKey, expire, md5, fileInfo.getPlatform());
+
+    }
     @Override
     public String generatePresignedUrl(String storageCode, int expirationTime) {
         FileInfo fileInfo = getById(storageCode);
@@ -146,8 +174,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     @Override
     public String generatePresignedUrl(FileInfo fileInfo, int expirationTime) {
         if (fileInfo.getPlatform().toLowerCase().contains("local")) {
-            // 临时处理访问方式
-            return fileStorageProperties.getLocalPlus().get(0).getDomain()+fileInfo.getPath()+fileInfo.getFilename();
+            return getLocalPresignedUrl(fileInfo, expirationTime);
         }
         FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
 
@@ -270,15 +297,16 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public FileInfo uploadTemporary(InputStream inputStream, String filename, long expirationTime) {
-        FileInfo fileInfo = fileStorageService.of(inputStream).setOriginalFilename(filename).upload();
+        FileInfo fileInfo =
+                fileStorageService.of(inputStream).setOriginalFilename(filename).upload();
         FileDetail fileDetail;
-        try{
+        try {
             fileDetail = fileDetailService.toFileDetail(fileInfo);
             fileDetail.setTemporary(TemporaryTypeEnum.TEMPORARY.value());
-            fileDetail.setExpireTime(DateUtil.offsetSecond(new Date(), (int)expirationTime));
+            fileDetail.setExpireTime(DateUtil.offsetSecond(new Date(), (int) expirationTime));
             fileDetailService.updateById(fileDetail);
         } catch (Exception e) {
-            log.warn("更新临时时间报错,文档ID为：{}",fileInfo.getId());
+            log.warn("更新临时时间报错,文档ID为：{}", fileInfo.getId());
         }
         return fileInfo;
     }
@@ -287,12 +315,12 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     public boolean becomePerpetual(String storageCode) {
         FileInfo fileInfo = getById(storageCode);
         FileDetail fileDetail;
-        try{
+        try {
             fileDetail = fileDetailService.toFileDetail(fileInfo);
             fileDetail.setTemporary(TemporaryTypeEnum.PERPETUAL.value());
             fileDetailService.updateById(fileDetail);
-        }catch (Exception e) {
-            log.warn("更新临时时间报错,文档ID为：{}",fileInfo.getId());
+        } catch (Exception e) {
+            log.warn("更新临时时间报错,文档ID为：{}", fileInfo.getId());
             return false;
         }
         return true;
@@ -313,10 +341,13 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
                     0,
                     metadata.get(MetadataKeyConst.OSS_PATH_KEY).lastIndexOf("/") + 1));
             info.setFilename(FileUtil.getName(metadata.get(MetadataKeyConst.OSS_PATH_KEY)));
-            if (metadata.get(metadata.get(MetadataKeyConst.PLATFORM_KEY)).toLowerCase().contains("local")) {
+            if (metadata.get(metadata.get(MetadataKeyConst.PLATFORM_KEY))
+                    .toLowerCase()
+                    .contains("local")) {
                 // 临时处理访问方式
-                info.setUrl(fileStorageProperties.getLocalPlus().get(0).getDomain()+metadata.get(MetadataKeyConst.OSS_PATH_KEY));
-            } else{
+                info.setUrl(fileStorageProperties.getLocalPlus().get(0).getDomain()
+                        + metadata.get(MetadataKeyConst.OSS_PATH_KEY));
+            } else {
                 info.setUrl(metadata.get(MetadataKeyConst.OSS_PATH_KEY));
             }
             info.setExt("png");

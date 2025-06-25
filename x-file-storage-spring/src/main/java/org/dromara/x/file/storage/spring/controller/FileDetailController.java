@@ -1,19 +1,27 @@
 package org.dromara.x.file.storage.spring.controller;
 
-import java.io.IOException;
-import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
+import cn.hutool.crypto.SecureUtil;
+import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.utils.StringUtils;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.FileStorageService;
+import org.dromara.x.file.storage.core.constant.Constant;
 import org.dromara.x.file.storage.core.file.HttpServletRequestFileWrapper;
 import org.dromara.x.file.storage.core.file.MultipartFormDataReader;
 import org.dromara.x.file.storage.core.hash.HashInfo;
+import org.dromara.x.file.storage.spring.service.XFileExtensionService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @RestController
@@ -86,5 +94,55 @@ public class FileDetailController {
         return fileInfo;
     }
 
-    // 增加本地存储方式临时访问路径生成
+
+    /**
+     * 本地存储平台--临时访问链接--接口
+     * @param downloadFlag 下载方式标记
+     * @param key          关键信息Key(胶片报告-storageCode) (影像--storageCode_ossPath)
+     * @param expire       过期时间 秒单位
+     * @param signature    签名
+     * @param platform     平台名称
+     * @param response     响应结果对象
+     * @throws Exception   异常信息对象
+     */
+    @GetMapping("/tempview")
+    public void getUrl(@RequestParam("downloadFlag") Integer downloadFlag,
+                       @RequestParam("key") String key,
+                       @RequestParam("expire") Long expire,
+                       @RequestParam("signature") String signature,
+                       @RequestParam("platform") String platform,
+                       HttpServletResponse response) throws Exception {
+
+        //参数校验
+        if (expire == null || downloadFlag == null || StringUtils.isBlank(key) || StringUtils.isBlank(signature)) {
+            throw new Exception("参数非法!");
+        }
+        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+        String md5 = SecureUtil.md5(raw);
+        if (!Objects.equals(md5, signature)) {
+            throw new Exception("文档临时访问链接参数非法!");
+        }
+        //校验过期时间
+        if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
+            throw new Exception("文档临时访问链接已过期!");
+        }
+        response.setContentType("application/octet-stream");
+        try {
+
+            String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename.toString(), "UTF-8"));
+            if(platform.toLowerCase().contains("local")){
+                FileInfo fileInfo = new FileInfo();
+
+                fileInfo.setPath(key.replace(filename,""));
+                fileInfo.setFilename(filename);
+
+                fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
+            }
+
+        } catch (IOException e) {
+            log.error(String.format("【云存储】获取文件出错,key: %s", key), e);
+            throw new Exception(e.getLocalizedMessage());
+        }
+    }
 }

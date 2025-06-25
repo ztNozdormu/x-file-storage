@@ -202,4 +202,9 @@ public interface Constant {
             String OPTIONS = "OPTIONS";
         }
     }
+
+    /**
+     * 生成url盐
+     */
+    String FILE_DOWNLOAD_URI_SALT = "^KywPkljKF5ZGz^5Lj@#tiSPfX%mDPoK6Vs5SY&W#8qtioIooj#tS75m%6ZNsOmM";
 }
