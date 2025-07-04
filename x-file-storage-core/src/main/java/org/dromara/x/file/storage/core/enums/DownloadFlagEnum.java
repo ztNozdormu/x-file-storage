@@ -1,6 +1,5 @@
 package org.dromara.x.file.storage.core.enums;
 
-
 /**
  * 下载标记枚举
  *

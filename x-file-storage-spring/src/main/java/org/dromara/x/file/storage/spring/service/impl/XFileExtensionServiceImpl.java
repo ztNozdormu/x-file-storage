@@ -9,7 +9,6 @@ import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URLEncoder;
 import java.time.Instant;
 import java.util.*;
 import lombok.SneakyThrows;
@@ -48,6 +47,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     public void setSpringFileStorageProperties(SpringFileStorageProperties fileStorageProperties) {
         this.fileStorageProperties = fileStorageProperties;
     }
+
     @SneakyThrows
     @Override
     public String createByMetadata(Map<String, String> metadata) {
@@ -120,7 +120,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     public String generatePresignedUrl(FileInfo fileInfo) {
 
         if (fileInfo.getPlatform().toLowerCase().contains("local")) {
-            return getLocalPresignedUrl(fileInfo,604800);
+            return getLocalPresignedUrl(fileInfo, 604800);
         }
         FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
 
@@ -149,7 +149,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
      */
     String getLocalPresignedUrl(FileInfo fileInfo, long expireSecond) {
         // 默认七天
-        if(expireSecond == 0){
+        if (expireSecond == 0) {
             expireSecond = 604800;
         }
 
@@ -159,9 +159,16 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         String raw = DownloadFlagEnum.NOT_DOWNLOAD.value() + expire + ossKey + Constant.FILE_DOWNLOAD_URI_SALT;
         String md5 = SecureUtil.md5(raw);
 
-        return String.format(fileStorageProperties.getLocalPlus().get(0).getDomain() + "/xfile/tempview?downloadFlag=%s&key=%s&expire=%s&signature=%s&storageTypeEnum=%s", DownloadFlagEnum.NOT_DOWNLOAD.value(), ossKey, expire, md5, fileInfo.getPlatform());
-
+        return String.format(
+                fileStorageProperties.getLocalPlus().get(0).getDomain()
+                        + "/xfile/tempview?downloadFlag=%s&key=%s&expire=%s&signature=%s&storageTypeEnum=%s",
+                DownloadFlagEnum.NOT_DOWNLOAD.value(),
+                ossKey,
+                expire,
+                md5,
+                fileInfo.getPlatform());
     }
+
     @Override
     public String generatePresignedUrl(String storageCode, int expirationTime) {
         FileInfo fileInfo = getById(storageCode);

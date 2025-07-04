@@ -2,6 +2,13 @@ package org.dromara.x.file.storage.spring.controller;
 
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Objects;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.utils.StringUtils;
 import org.dromara.x.file.storage.core.FileInfo;
@@ -10,18 +17,9 @@ import org.dromara.x.file.storage.core.constant.Constant;
 import org.dromara.x.file.storage.core.file.HttpServletRequestFileWrapper;
 import org.dromara.x.file.storage.core.file.MultipartFormDataReader;
 import org.dromara.x.file.storage.core.hash.HashInfo;
-import org.dromara.x.file.storage.spring.service.XFileExtensionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.time.Instant;
-import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @RestController
@@ -94,7 +92,6 @@ public class FileDetailController {
         return fileInfo;
     }
 
-
     /**
      * 本地存储平台--临时访问链接--接口
      * @param downloadFlag 下载方式标记
@@ -106,14 +103,16 @@ public class FileDetailController {
      * @throws Exception   异常信息对象
      */
     @GetMapping("/tempview")
-    public void getUrl(@RequestParam("downloadFlag") Integer downloadFlag,
-                       @RequestParam("key") String key,
-                       @RequestParam("expire") Long expire,
-                       @RequestParam("signature") String signature,
-                       @RequestParam("platform") String platform,
-                       HttpServletResponse response) throws Exception {
+    public void getUrl(
+            @RequestParam("downloadFlag") Integer downloadFlag,
+            @RequestParam("key") String key,
+            @RequestParam("expire") Long expire,
+            @RequestParam("signature") String signature,
+            @RequestParam("platform") String platform,
+            HttpServletResponse response)
+            throws Exception {
 
-        //参数校验
+        // 参数校验
         if (expire == null || downloadFlag == null || StringUtils.isBlank(key) || StringUtils.isBlank(signature)) {
             throw new Exception("参数非法!");
         }
@@ -122,7 +121,7 @@ public class FileDetailController {
         if (!Objects.equals(md5, signature)) {
             throw new Exception("文档临时访问链接参数非法!");
         }
-        //校验过期时间
+        // 校验过期时间
         if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
             throw new Exception("文档临时访问链接已过期!");
         }
@@ -130,11 +129,12 @@ public class FileDetailController {
         try {
 
             String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
-            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename.toString(), "UTF-8"));
-            if(platform.toLowerCase().contains("local")){
+            response.setHeader(
+                    "Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename.toString(), "UTF-8"));
+            if (platform.toLowerCase().contains("local")) {
                 FileInfo fileInfo = new FileInfo();
 
-                fileInfo.setPath(key.replace(filename,""));
+                fileInfo.setPath(key.replace(filename, ""));
                 fileInfo.setFilename(filename);
 
                 fileStorageService.download(fileInfo).outputStream(response.getOutputStream());

@@ -9,6 +9,13 @@
 
     <artifactId>x-file-storage-core</artifactId>
     <name>X File Storage Core</name>
+    <distributionManagement>
+        <repository>
+            <id>maven-releases</id>
+            <name>maven-releases</name>
+            <url>http://192.168.1.100:8081/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
 
     <dependencies>
         <!-- javax.servlet-api -->
@@ -183,5 +190,4 @@
             <optional>true</optional>
         </dependency>
     </dependencies>
-
 </project>

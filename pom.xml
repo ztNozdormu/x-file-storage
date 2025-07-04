@@ -73,6 +73,13 @@
         <developerConnection>scm:git:git@github.com:dromara/x-file-storage.git</developerConnection>
         <url>git@github.com:dromara/x-file-storage.git</url>
     </scm>
+    <distributionManagement>
+        <repository>
+            <id>maven-releases</id>
+            <name>maven-releases</name>
+            <url>http://192.168.1.100:8081/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <revision>2.2.1</revision>
@@ -299,7 +306,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <build>
         <plugins>
             <plugin>
@@ -413,16 +419,6 @@
         </profile>
         <profile>
             <id>release</id>
-            <distributionManagement>
-                <repository>
-                    <id>oss</id>
-                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>oss</id>
-                    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-                </snapshotRepository>
-            </distributionManagement>
             <build>
                 <plugins>
                     <!-- Source -->

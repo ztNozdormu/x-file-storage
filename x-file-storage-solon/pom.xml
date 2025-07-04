@@ -9,6 +9,13 @@
 
     <artifactId>x-file-storage-solon</artifactId>
     <name>X File Storage Solon</name>
+    <distributionManagement>
+        <repository>
+            <id>maven-releases</id>
+            <name>maven-releases</name>
+            <url>http://192.168.1.100:8081/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -41,5 +48,4 @@
         </dependency>
 
     </dependencies>
-
 </project>
