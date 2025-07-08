@@ -225,10 +225,10 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String generatePresignedUrl(FileInfo fileInfo, int expirationTime) {
-        if (fileInfo.getPlatform().toLowerCase().contains("local")) {
+        FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
+        if (fileStorage instanceof LocalPlusFileStorage) {
             return getLocalPresignedUrl(fileInfo, expirationTime);
         }
-        FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
 
         if (!fileStorage.isSupportPresignedUrl()) {
             log.error("该存储平台暂不支持生成预签名 URL {}", fileInfo.getPlatform());

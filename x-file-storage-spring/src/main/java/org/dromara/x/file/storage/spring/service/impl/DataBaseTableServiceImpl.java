@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.x.file.storage.spring.MybatisPlusUtils;
 import org.dromara.x.file.storage.spring.dao.DataBaseTableMapper;
 import org.dromara.x.file.storage.spring.service.DataBaseTableService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +19,8 @@ public class DataBaseTableServiceImpl implements DataBaseTableService {
 
     private String dataBase;
 
-    public DataBaseTableServiceImpl(DataBaseTableMapper dataBaseTableMapper) {
+    public DataBaseTableServiceImpl(DataBaseTableMapper dataBaseTableMapper, DataSource dataSource) {
         this.dataBaseTableMapper = dataBaseTableMapper;
-    }
-
-    @Autowired
-    public DataBaseTableServiceImpl(DataSource dataSource) {
         try {
             this.dataBase = dataSource.getConnection().getCatalog();
         } catch (SQLException e) {
