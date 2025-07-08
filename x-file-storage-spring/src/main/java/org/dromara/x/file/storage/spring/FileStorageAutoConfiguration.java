@@ -23,9 +23,9 @@ import org.dromara.x.file.storage.spring.SpringFileStorageProperties.SpringLocal
 import org.dromara.x.file.storage.spring.dao.FileDetailMapper;
 import org.dromara.x.file.storage.spring.dao.FilePartDetailMapper;
 import org.dromara.x.file.storage.spring.file.MultipartFileWrapperAdapter;
-import org.dromara.x.file.storage.spring.service.FileDetailService;
-import org.dromara.x.file.storage.spring.service.FilePartDetailService;
 import org.dromara.x.file.storage.spring.service.XFileExtensionService;
+import org.dromara.x.file.storage.spring.service.impl.FileDetailServiceImpl;
+import org.dromara.x.file.storage.spring.service.impl.FilePartDetailServiceImpl;
 import org.dromara.x.file.storage.spring.service.impl.XFileExtensionServiceImpl;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,15 +54,15 @@ public class FileStorageAutoConfiguration {
     // 自动注册分片服务
     @Bean
     @ConditionalOnMissingBean
-    public FilePartDetailService filePartDetailService(FilePartDetailMapper filePartDetailMapper) {
-        return new FilePartDetailService(filePartDetailMapper);
+    public FilePartDetailServiceImpl filePartDetailService(FilePartDetailMapper filePartDetailMapper) {
+        return new FilePartDetailServiceImpl(filePartDetailMapper);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public FileDetailService fileDetailService(
-            FilePartDetailService filePartDetailService, FileDetailMapper fileDetailMapper) {
-        FileDetailService service = new FileDetailService(fileDetailMapper);
+    public FileDetailServiceImpl fileDetailService(
+            FilePartDetailServiceImpl filePartDetailService, FileDetailMapper fileDetailMapper) {
+        FileDetailServiceImpl service = new FileDetailServiceImpl(fileDetailMapper);
         service.setFilePartDetailService(filePartDetailService);
         return service;
     }
@@ -70,11 +70,14 @@ public class FileStorageAutoConfiguration {
     // 注册扩展服务，并确保依赖注入
     @Bean
     @ConditionalOnMissingBean
-    public XFileExtensionService xFileExtensionServiceImpl(
-            FileDetailService fileDetailService, FileStorageService fileStorageService) {
+    public XFileExtensionService xFileExtensionService(
+            FileDetailServiceImpl fileDetailService,
+            FileStorageService fileStorageService,
+            SpringFileStorageProperties fileStorageProperties) {
         XFileExtensionServiceImpl impl = new XFileExtensionServiceImpl();
         impl.setFileDetailService(fileDetailService);
         impl.setFileStorageService(fileStorageService);
+        impl.setSpringFileStorageProperties(fileStorageProperties);
         return impl;
     }
 

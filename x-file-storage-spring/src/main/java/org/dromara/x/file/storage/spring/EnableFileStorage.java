@@ -1,6 +1,7 @@
 package org.dromara.x.file.storage.spring;
 
 import java.lang.annotation.*;
+import org.dromara.x.file.storage.spring.mybatis.KndMybatisProperties;
 import org.springframework.context.annotation.Import;
 
 /**
@@ -9,5 +10,5 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 @Documented
-@Import({FileStorageAutoConfiguration.class, SpringFileStorageProperties.class})
+@Import({FileStorageAutoConfiguration.class, SpringFileStorageProperties.class, KndMybatisProperties.class})
 public @interface EnableFileStorage {}

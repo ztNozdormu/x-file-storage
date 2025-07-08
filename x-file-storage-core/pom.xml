@@ -194,7 +194,6 @@
             <version>5.8.28</version>
         </dependency>
 
-
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-http</artifactId>

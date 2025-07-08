@@ -7,13 +7,14 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Instant;
 import java.util.*;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.utils.StringUtils;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.FileStorageService;
 import org.dromara.x.file.storage.core.constant.Constant;
@@ -21,22 +22,25 @@ import org.dromara.x.file.storage.core.enums.DownloadFlagEnum;
 import org.dromara.x.file.storage.core.enums.ImageFileTypeEnum;
 import org.dromara.x.file.storage.core.enums.TemporaryTypeEnum;
 import org.dromara.x.file.storage.core.platform.FileStorage;
+import org.dromara.x.file.storage.core.platform.LocalPlusFileStorage;
 import org.dromara.x.file.storage.core.presigned.GeneratePresignedUrlPretreatment;
+import org.dromara.x.file.storage.core.util.UUIDUtils;
+import org.dromara.x.file.storage.spring.BaseTableNameEnum;
+import org.dromara.x.file.storage.spring.MybatisPlusUtils;
 import org.dromara.x.file.storage.spring.SpringFileStorageProperties;
 import org.dromara.x.file.storage.spring.constant.MetadataKeyConst;
 import org.dromara.x.file.storage.spring.domain.FileDetail;
-import org.dromara.x.file.storage.spring.service.FileDetailService;
 import org.dromara.x.file.storage.spring.service.XFileExtensionService;
 
 @Slf4j
 public class XFileExtensionServiceImpl implements XFileExtensionService {
 
-    private FileDetailService fileDetailService;
+    private FileDetailServiceImpl fileDetailService;
     private FileStorageService fileStorageService;
 
     private SpringFileStorageProperties fileStorageProperties;
 
-    public void setFileDetailService(FileDetailService fileDetailService) {
+    public void setFileDetailService(FileDetailServiceImpl fileDetailService) {
         this.fileDetailService = fileDetailService;
     }
 
@@ -46,6 +50,27 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     public void setSpringFileStorageProperties(SpringFileStorageProperties fileStorageProperties) {
         this.fileStorageProperties = fileStorageProperties;
+    }
+
+    /**
+     * 存储编码(文档记录表ID) 约定格式 hospitalId+"-"+year+"-"+id
+     * @param storageCode 存储编码(文档记录表ID)
+     * @return 表全名称
+     */
+    private void autoChangeTableName(String storageCode) {
+        if (storageCode.contains(StringPool.DASH)) {
+            String[] suffixs = storageCode.split(StringPool.DASH);
+            String tableName = BaseTableNameEnum.HOS_FILE_DETAIL.tableName()
+                    + StringPool.UNDERSCORE
+                    + suffixs[0]
+                    + StringPool.UNDERSCORE
+                    + suffixs[1];
+            MybatisPlusUtils.setDynamicTableName(tableName);
+
+        } else {
+
+            MybatisPlusUtils.setDynamicTableName(BaseTableNameEnum.HOS_FILE_DETAIL.tableName());
+        }
     }
 
     @SneakyThrows
@@ -59,6 +84,22 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
             throw new Exception("存储文件业务类型不能为空");
         }
         FileDetail detail = fileDetailService.toFileDetail(buildByMetadata(metadata));
+        if (StringUtils.isNotBlank(metadata.get(MetadataKeyConst.YEAR_KEY))) {
+            String year = StringUtils.isBlank(metadata.get(MetadataKeyConst.YEAR_KEY))
+                    ? String.valueOf(DateUtil.year(new Date()))
+                    : metadata.get(MetadataKeyConst.YEAR_KEY);
+            String tableSuffix = metadata.get(MetadataKeyConst.PLATFORM_KEY) + "_" + year;
+            MybatisPlusUtils.setDynamicTableName(BaseTableNameEnum.HOS_FILE_DETAIL.tableName() + "_" + tableSuffix);
+            UUIDUtils idWorker = new UUIDUtils();
+            detail.setId(metadata.get(MetadataKeyConst.PLATFORM_KEY)
+                    + StringPool.DASH
+                    + year
+                    + StringPool.DASH
+                    + idWorker.nextId());
+            if (StringUtils.isBlank(detail.getUrl())) {
+                detail.setUrl("DICOMURL");
+            }
+        }
         boolean b = fileDetailService.save(detail);
         if (b) {
             return detail.getId();
@@ -69,7 +110,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     @SneakyThrows
     @Override
     public boolean updateMetadata(String storageCode, Map<String, String> metadata) {
-
+        autoChangeTableName(storageCode);
         FileDetail detail = fileDetailService.getOne(new QueryWrapper<FileDetail>().eq(FileDetail.COL_ID, storageCode));
         detail.setMetadata(fileDetailService.valueToJson(metadata));
 
@@ -78,6 +119,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String getMetadata(String storageCode) {
+        autoChangeTableName(storageCode);
         FileDetail fileDetail = fileDetailService.getById(storageCode);
         if (fileDetail == null) {
             return null;
@@ -87,6 +129,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String getDicomMetadata(String storageCode) {
+        autoChangeTableName(storageCode);
         FileInfo fileInfo = getById(storageCode);
         if (fileInfo == null || ObjectUtil.isEmpty(fileInfo.getMetadata())) {
             return null;
@@ -98,6 +141,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     @Override
     public FileInfo getById(String storageCode) {
         try {
+            autoChangeTableName(storageCode);
             return fileDetailService.toFileInfo(
                     fileDetailService.getOne(new QueryWrapper<FileDetail>().eq(FileDetail.COL_ID, storageCode)));
         } catch (Exception e) {
@@ -108,7 +152,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String generatePresignedUrl(String storageCode) {
-
+        autoChangeTableName(storageCode);
         FileInfo fileInfo = getById(storageCode);
         if (fileInfo == null) {
             return null;
@@ -171,6 +215,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String generatePresignedUrl(String storageCode, int expirationTime) {
+        autoChangeTableName(storageCode);
         FileInfo fileInfo = getById(storageCode);
         if (fileInfo == null) {
             return null;
@@ -201,6 +246,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public int freeze(String storageCode) {
+        autoChangeTableName(storageCode);
         // todo
         return 200;
     }
@@ -214,11 +260,12 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     @Override
     public boolean delete(String storageCode) {
         try {
+            autoChangeTableName(storageCode);
             FileInfo fileInfo = fileDetailService.toFileInfo(
                     fileDetailService.getOne(new QueryWrapper<FileDetail>().eq(FileDetail.COL_ID, storageCode)));
             return fileStorageService.delete(fileInfo);
         } catch (Exception e) {
-            log.error("删除文档失败,失败原因{}", e);
+            log.error("删除文档失败,失败原因{}", e.getMessage());
         }
 
         return false;
@@ -236,6 +283,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         }
 
         try {
+            autoChangeTableName(storageCode);
             FileInfo fileInfo = getById(storageCode);
 
             Set<String> allKeys = expandKeysByType(ossKeys, fileTypeEnum);
@@ -282,6 +330,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public boolean exists(String storageCode) {
+        autoChangeTableName(storageCode);
         FileInfo fileInfo = getById(storageCode);
         return fileStorageService.exists(fileInfo);
     }
@@ -293,6 +342,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public void downLoadOutStream(String storageCode, OutputStream out) {
+        autoChangeTableName(storageCode);
         FileInfo fileInfo = getById(storageCode);
         fileStorageService.download(fileInfo).outputStream(out);
     }
@@ -320,6 +370,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public boolean becomePerpetual(String storageCode) {
+        autoChangeTableName(storageCode);
         FileInfo fileInfo = getById(storageCode);
         FileDetail fileDetail;
         try {
@@ -348,9 +399,8 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
                     0,
                     metadata.get(MetadataKeyConst.OSS_PATH_KEY).lastIndexOf("/") + 1));
             info.setFilename(FileUtil.getName(metadata.get(MetadataKeyConst.OSS_PATH_KEY)));
-            if (metadata.get(metadata.get(MetadataKeyConst.PLATFORM_KEY))
-                    .toLowerCase()
-                    .contains("local")) {
+            FileStorage fileStorage = fileStorageService.getFileStorage(metadata.get(MetadataKeyConst.PLATFORM_KEY));
+            if (fileStorage instanceof LocalPlusFileStorage) {
                 // 临时处理访问方式
                 info.setUrl(fileStorageProperties.getLocalPlus().get(0).getDomain()
                         + metadata.get(MetadataKeyConst.OSS_PATH_KEY));
@@ -363,7 +413,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         if (ImageFileTypeEnum.DICOM.value().toString().equals(metadata.get(MetadataKeyConst.FILE_TYPE_KEY))) {
             info.setExt("dcm"); // 最好有值
             info.setContentType("application/dicom");
-            if (StringUtils.isBlank(metadata.get("DICOM_METADATA_KEY"))) {
+            if (StringUtils.isBlank(metadata.get(MetadataKeyConst.DICOM_METADATA_KEY))) {
                 throw new Exception("影像元数据不能为空");
             }
         }

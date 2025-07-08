@@ -129,8 +129,7 @@ public class FileDetailController {
         try {
 
             String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
-            response.setHeader(
-                    "Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename.toString(), "UTF-8"));
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
             if (platform.toLowerCase().contains("local")) {
                 FileInfo fileInfo = new FileInfo();
 
@@ -145,4 +144,6 @@ public class FileDetailController {
             throw new Exception(e.getLocalizedMessage());
         }
     }
+
+    // TODO 删除
 }

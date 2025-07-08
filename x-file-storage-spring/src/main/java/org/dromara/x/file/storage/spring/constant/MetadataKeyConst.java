@@ -12,4 +12,6 @@ public interface MetadataKeyConst {
     String OSS_PATH_KEY = "OSS_PATH";
 
     String DICOM_METADATA_KEY = "DICOM_METADATA";
+
+    String YEAR_KEY = "YEAR_KEY";
 }
