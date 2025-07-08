@@ -5,4 +5,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.dromara.x.file.storage.spring.domain.FileDetail;
 
 @Mapper
-public interface FileDetailMapper extends BaseMapper<FileDetail> {}
+public interface FileDetailMapper extends BaseMapper<FileDetail> {
+
+}
