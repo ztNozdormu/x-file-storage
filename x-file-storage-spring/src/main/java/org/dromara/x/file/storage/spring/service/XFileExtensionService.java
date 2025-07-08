@@ -180,6 +180,14 @@ public interface XFileExtensionService {
      * 上传临时文档
      * @param inputStream   文件流
      * @param filename 文件名称
+     * @return FileInfo
+     */
+    FileInfo uploadPerpetual(InputStream inputStream, String filename);
+
+    /**
+     * 上传临时文档
+     * @param inputStream   文件流
+     * @param filename 文件名称
      * @param expirationTime 存储周期
      * @return FileInfo
      */
@@ -191,4 +199,11 @@ public interface XFileExtensionService {
      * @return true or false
      */
     boolean becomePerpetual(String storageCode);
+
+    /**
+     * 获取文档大小
+     * @param storageCode
+     * @return
+     */
+    long getSize(String storageCode);
 }

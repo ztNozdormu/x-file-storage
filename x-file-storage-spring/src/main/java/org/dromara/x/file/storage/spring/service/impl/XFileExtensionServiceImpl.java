@@ -225,11 +225,12 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
     @Override
     public String generatePresignedUrl(FileInfo fileInfo, int expirationTime) {
-        if (fileInfo.getPlatform().toLowerCase().contains("local")) {
-            return getLocalPresignedUrl(fileInfo, expirationTime);
-        }
+
         FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
 
+        if (fileStorage instanceof LocalPlusFileStorage) {
+            return getLocalPresignedUrl(fileInfo, expirationTime);
+        }
         if (!fileStorage.isSupportPresignedUrl()) {
             log.error("该存储平台暂不支持生成预签名 URL {}", fileInfo.getPlatform());
         }
@@ -353,6 +354,21 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     }
 
     @Override
+    public FileInfo uploadPerpetual(InputStream inputStream, String filename) {
+        FileInfo fileInfo =
+                fileStorageService.of(inputStream).setOriginalFilename(filename).upload();
+        FileDetail fileDetail;
+        try {
+            fileDetail = fileDetailService.toFileDetail(fileInfo);
+            fileDetail.setTemporary(TemporaryTypeEnum.PERPETUAL.value());
+            fileDetailService.updateById(fileDetail);
+        } catch (Exception e) {
+            log.warn("更新临时时间报错,文档ID为：{}", fileInfo.getId());
+        }
+        return fileInfo;
+    }
+
+    @Override
     public FileInfo uploadTemporary(InputStream inputStream, String filename, long expirationTime) {
         FileInfo fileInfo =
                 fileStorageService.of(inputStream).setOriginalFilename(filename).upload();
@@ -382,6 +398,13 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public long getSize(String storageCode) {
+        autoChangeTableName(storageCode);
+        FileInfo fileInfo = getById(storageCode);
+        return fileInfo.getSize();
     }
 
     FileInfo buildByMetadata(Map<String, String> metadata) throws Exception {
