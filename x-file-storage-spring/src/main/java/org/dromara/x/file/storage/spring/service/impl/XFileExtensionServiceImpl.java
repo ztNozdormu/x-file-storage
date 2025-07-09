@@ -135,7 +135,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
             return null;
         }
 
-        return fileInfo.getMetadata().get("DICOM_METADATA_KEY");
+        return fileInfo.getMetadata().get(MetadataKeyConst.DICOM_METADATA_KEY);
     }
 
     @Override
@@ -442,7 +442,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         }
         info.setMetadata(metadata);
 
-        info.setPlatform(metadata.get(metadata.get(MetadataKeyConst.PLATFORM_KEY))); // 必填
+        info.setPlatform(metadata.get(MetadataKeyConst.PLATFORM_KEY)); // 必填
 
         return info;
     }
