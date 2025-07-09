@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import javax.sql.DataSource;
 import org.dromara.x.file.storage.spring.BaseTableNameEnum;
 import org.dromara.x.file.storage.spring.dao.DataBaseTableMapper;
 import org.dromara.x.file.storage.spring.service.DataBaseTableService;
@@ -50,7 +51,7 @@ public class KndMybatisProperties {
     // 自动注册分片服务
     @Bean
     @ConditionalOnMissingBean
-    public DataBaseTableService dataBaseTableService(DataBaseTableMapper dataBaseTableMapper) {
-        return new DataBaseTableServiceImpl(dataBaseTableMapper);
+    public DataBaseTableService dataBaseTableService(DataBaseTableMapper dataBaseTableMapper, DataSource dataSource) {
+        return new DataBaseTableServiceImpl(dataBaseTableMapper, dataSource);
     }
 }

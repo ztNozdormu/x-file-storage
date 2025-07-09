@@ -20,6 +20,7 @@ import org.dromara.x.file.storage.core.tika.TikaContentTypeDetect;
 import org.dromara.x.file.storage.core.tika.TikaFactory;
 import org.dromara.x.file.storage.spring.SpringFileStorageProperties.SpringLocalConfig;
 import org.dromara.x.file.storage.spring.SpringFileStorageProperties.SpringLocalPlusConfig;
+import org.dromara.x.file.storage.spring.controller.FileDetailController;
 import org.dromara.x.file.storage.spring.dao.FileDetailMapper;
 import org.dromara.x.file.storage.spring.dao.FilePartDetailMapper;
 import org.dromara.x.file.storage.spring.file.MultipartFileWrapperAdapter;
@@ -50,6 +51,11 @@ public class FileStorageAutoConfiguration {
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    @Bean
+    public FileDetailController fileDetailController(FileStorageService fileStorageService) {
+        return new FileDetailController(fileStorageService);
+    }
 
     // 自动注册分片服务
     @Bean

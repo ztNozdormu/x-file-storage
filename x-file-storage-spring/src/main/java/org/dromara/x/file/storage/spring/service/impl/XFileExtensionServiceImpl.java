@@ -163,10 +163,10 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
     @Override
     public String generatePresignedUrl(FileInfo fileInfo) {
 
-        if (fileInfo.getPlatform().toLowerCase().contains("local")) {
+        FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
+        if (fileStorage instanceof LocalPlusFileStorage) {
             return getLocalPresignedUrl(fileInfo, 604800);
         }
-        FileStorage fileStorage = fileStorageService.getFileStorage(fileInfo.getPlatform());
 
         if (!fileStorage.isSupportPresignedUrl()) {
             log.error("该存储平台暂不支持生成预签名 URL{}", fileInfo.getPlatform());
@@ -205,7 +205,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
 
         return String.format(
                 fileStorageProperties.getLocalPlus().get(0).getDomain()
-                        + "/xfile/tempview?downloadFlag=%s&key=%s&expire=%s&signature=%s&storageTypeEnum=%s",
+                        + "/xfile/tempview?downloadFlag=%s&key=%s&expire=%s&signature=%s&platform=%s",
                 DownloadFlagEnum.NOT_DOWNLOAD.value(),
                 ossKey,
                 expire,

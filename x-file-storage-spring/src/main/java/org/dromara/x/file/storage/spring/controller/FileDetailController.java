@@ -17,7 +17,8 @@ import org.dromara.x.file.storage.core.constant.Constant;
 import org.dromara.x.file.storage.core.file.HttpServletRequestFileWrapper;
 import org.dromara.x.file.storage.core.file.MultipartFormDataReader;
 import org.dromara.x.file.storage.core.hash.HashInfo;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.dromara.x.file.storage.core.platform.FileStorage;
+import org.dromara.x.file.storage.core.platform.LocalPlusFileStorage;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,8 +27,11 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/xfile")
 public class FileDetailController {
 
-    @Autowired
-    private FileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
+
+    public FileDetailController(FileStorageService fileStorageService) {
+        this.fileStorageService = fileStorageService;
+    }
 
     /**
      * 上传文件，成功返回文件 url
@@ -130,11 +134,13 @@ public class FileDetailController {
 
             String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
             response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
-            if (platform.toLowerCase().contains("local")) {
+            FileStorage fileStorage = fileStorageService.getFileStorage(platform);
+            if (fileStorage instanceof LocalPlusFileStorage) {
                 FileInfo fileInfo = new FileInfo();
 
                 fileInfo.setPath(key.replace(filename, ""));
                 fileInfo.setFilename(filename);
+                fileInfo.setPlatform(platform);
 
                 fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
             }
