@@ -178,6 +178,8 @@ public class FileDetailController {
                 fileInfo.setPath(key.substring(0, key.lastIndexOf(filename)));
                 fileInfo.setFilename(filename);
                 fileInfo.setPlatform(platform);
+
+                fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
             } else {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "不支持的存储平台类型");
             }
