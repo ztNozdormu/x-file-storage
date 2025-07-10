@@ -289,6 +289,9 @@ public class FileDetailController {
                         forwardUrl, HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), byte[].class);
 
                 if (entity.getStatusCode().is2xxSuccessful() && entity.getBody() != null) {
+                    // 设置文件名，让浏览器弹下载框
+                    response.setHeader(
+                            "Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
                     byte[] body = entity.getBody();
                     try (ServletOutputStream os = response.getOutputStream()) {
                         os.write(body);
