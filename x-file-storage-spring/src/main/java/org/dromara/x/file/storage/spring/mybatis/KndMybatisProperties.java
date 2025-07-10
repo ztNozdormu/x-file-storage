@@ -82,7 +82,7 @@ public class KndMybatisProperties {
 
         dynamicTableNameInnerInterceptor.setTableNameHandlerMap(tableNameHandlerMap);
         // 添加拦截器
-        mybatisPlusInterceptor.addInnerInterceptor(new DynamicCreateTableInterceptor());
+        //        mybatisPlusInterceptor.addInnerInterceptor(new DynamicCreateTableInterceptor());
         mybatisPlusInterceptor.addInnerInterceptor(dynamicTableNameInnerInterceptor);
 
         if (isDM) {

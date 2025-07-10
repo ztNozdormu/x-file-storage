@@ -35,7 +35,9 @@ public class DynamicCreateTableInterceptor implements InnerInterceptor {
         if (StringUtils.isNotBlank(baseTableName)) {
             try {
                 String dataBase = connection.getCatalog();
-                String sql = "SELECT count(1) FROM information_schema.tables WHERE table_schema=? AND table_name = ?";
+                String sql = "SELECT COUNT(*) FROM ALL_TABLES WHERE OWNER = ? AND TABLE_NAME = ?";
+                //                String sql = "SELECT count(1) FROM information_schema.tables WHERE table_schema=? AND
+                // table_name = ?";
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 preparedStatement.setString(1, dataBase);
                 preparedStatement.setString(2, dynamicTableName);

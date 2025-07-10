@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="org.dromara.x.file.storage.spring.dao.DataBaseTableMapper">
-    <select id="showTableCreateSql" resultType="map">
-        SHOW CREATE TABLE ${value}
-    </select>
-    <update id="execSql">
-        ${value}
-    </update>
-    <select id="exitsTableCreateSql" resultType="int">
-        SELECT count(1) FROM information_schema.tables WHERE table_schema=#{dataBaseName} AND table_name = #{tableName}
-    </select>
-    <select id="getTableName" resultType="string">
-        SHOW TABLES LIKE '${value}%'
-    </select>
-    <update id="dropTable">
-        drop table ${tableName}
-    </update>
+<select id="showTableCreateSql" resultType="map">
+    SHOW CREATE TABLE ${value}
+</select>
+<update id="execSql">
+    ${value}
+</update>
+<!--    <select id="exitsTableCreateSql" resultType="int">-->
+<!--        SELECT count(1) FROM information_schema.tables WHERE table_schema=#{dataBaseName} AND table_name = #{tableName}-->
+<!--    </select>-->
+
+<select id="exitsTableCreateSql" resultType="int">
+    SELECT COUNT(1)
+    FROM ALL_TABLES
+    WHERE OWNER = 'YYX_PRE'  <!-- 指定模式名 -->
+    AND TABLE_NAME = UPPER(#{tableName})
+</select>
+
+<select id="getTableName" resultType="string">
+    SHOW TABLES LIKE '${value}%'
+</select>
+<update id="dropTable">
+    drop table ${tableName}
+</update>
 </mapper>
