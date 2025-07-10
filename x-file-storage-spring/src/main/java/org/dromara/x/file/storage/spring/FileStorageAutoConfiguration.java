@@ -37,6 +37,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -53,8 +54,8 @@ public class FileStorageAutoConfiguration {
     private ApplicationContext applicationContext;
 
     @Bean
-    public FileDetailController fileDetailController(FileStorageService fileStorageService) {
-        return new FileDetailController(fileStorageService);
+    public RestTemplate restTemplateStorage() {
+        return new RestTemplate();
     }
 
     // 自动注册分片服务
@@ -71,6 +72,15 @@ public class FileStorageAutoConfiguration {
         FileDetailServiceImpl service = new FileDetailServiceImpl(fileDetailMapper);
         service.setFilePartDetailService(filePartDetailService);
         return service;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public FileDetailController fileDetailController(FileStorageService fileStorageService) {
+        FileDetailController fileDetailController = new FileDetailController();
+        //        fileDetailController.setSpringFileStorageProperties(fileStorageProperties);
+        fileDetailController.setFileStorageService(fileStorageService);
+        return fileDetailController;
     }
 
     // 注册扩展服务，并确保依赖注入

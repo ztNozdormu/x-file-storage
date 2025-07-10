@@ -217,6 +217,11 @@ public class FileStorageProperties {
         private String domain = "";
 
         /**
+         * 远程服务访问域名
+         */
+        private String remoteDomain = "";
+
+        /**
          * 其它自定义配置
          */
         private Map<String, Object> attr = new LinkedHashMap<>();

@@ -3,14 +3,15 @@ package org.dromara.x.file.storage.spring.controller;
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.connector.ClientAbortException;
 import org.apache.tika.utils.StringUtils;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.FileStorageService;
@@ -21,8 +22,14 @@ import org.dromara.x.file.storage.core.file.MultipartFormDataReader;
 import org.dromara.x.file.storage.core.hash.HashInfo;
 import org.dromara.x.file.storage.core.platform.FileStorage;
 import org.dromara.x.file.storage.core.platform.LocalPlusFileStorage;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -30,11 +37,23 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/xfile")
 public class FileDetailController {
 
-    private final FileStorageService fileStorageService;
+    @Autowired
+    private FileStorageService fileStorageService;
 
-    public FileDetailController(FileStorageService fileStorageService) {
+    //    @Autowired
+    //    private SpringFileStorageProperties fileStorageProperties;
+
+    @Autowired
+    private RestTemplate restTemplateStorage;
+
+    public void setFileStorageService(FileStorageService fileStorageService) {
         this.fileStorageService = fileStorageService;
     }
+
+    //    @Autowired
+    //    public void setSpringFileStorageProperties(SpringFileStorageProperties fileStorageProperties) {
+    //        this.fileStorageProperties = fileStorageProperties;
+    //    }
 
     /**
      * 上传文件，成功返回文件 url
@@ -114,6 +133,7 @@ public class FileDetailController {
      * @param response     响应结果对象
      * @throws Exception   异常信息对象
      */
+    //    @CrossOrigin(origins = "*")
     //    @GetMapping("/tempview")
     //    public void getUrl(
     //            @RequestParam("downloadFlag") Integer downloadFlag,
@@ -122,45 +142,70 @@ public class FileDetailController {
     //            @RequestParam("signature") String signature,
     //            @RequestParam("platform") String platform,
     //            HttpServletResponse response)
-    //            throws Exception {
+    //            throws IOException {
     //
     //        // 参数校验
     //        if (expire == null || downloadFlag == null || StringUtils.isBlank(key) || StringUtils.isBlank(signature))
     // {
-    //            throw new Exception("参数非法!");
+    //            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "参数非法");
+    //            return;
     //        }
+    //
+    //        // 签名校验
     //        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
     //        String md5 = SecureUtil.md5(raw);
     //        if (!Objects.equals(md5, signature)) {
-    //            throw new Exception("文档临时访问链接参数非法!");
+    //            response.sendError(HttpServletResponse.SC_FORBIDDEN, "文档临时访问链接参数非法");
+    //            return;
     //        }
-    //        // 校验过期时间
-    //        if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
-    //            throw new Exception("文档临时访问链接已过期!");
-    //        }
-    //        response.setContentType("application/octet-stream");
-    //        try {
     //
-    //            String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
+    //        // 过期时间校验
+    //        if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
+    //            response.sendError(HttpServletResponse.SC_GONE, "文档临时访问链接已过期");
+    //            return;
+    //        }
+    //
+    //        // 设置下载响应头
+    //        response.setContentType("application/octet-stream");
+    //        String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
+    //
+    //        if (Objects.equals(DownloadFlagEnum.DOWNLOAD.value(), downloadFlag)) {
+    //            // 下载模式
     //            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename,
     // "UTF-8"));
+    //        } else {
+    //            // 预览模式（也可以省略不设置）
+    //            response.setHeader("Content-Disposition", "inline;filename=" + URLEncoder.encode(filename, "UTF-8"));
+    //        }
+    //
+    //        try {
     //            FileStorage fileStorage = fileStorageService.getFileStorage(platform);
     //            if (fileStorage instanceof LocalPlusFileStorage) {
     //                FileInfo fileInfo = new FileInfo();
-    //
-    //                fileInfo.setPath(key.replace(filename, ""));
+    //                fileInfo.setPath(key.substring(0, key.lastIndexOf(filename)));
     //                fileInfo.setFilename(filename);
     //                fileInfo.setPlatform(platform);
     //                fileInfo.setContentType("application/dicom");
     //                fileInfo.setExt("dcm");
-    //                fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
+    //
+    //               // TODO 改造为通过该链接地址下载 downloadFlag值更新为1 重新计算签名signature=82a648b750ad9e33e2d38f3c11451396
+    //               //
+    // http://172.16.120.201:12004/xfile/tempview?downloadFlag=0&key=DX/2025-07-09/DR32507090007/12156147522444109471310320250709145236/1.2.156.147522.44.410947.13103.3.1.20250709145638.dcm&expire=1752651899&signature=82a648b750ad9e33e2d38f3c11451396&platform=1
+    //            } else {
+    //                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "不支持的存储平台类型");
     //            }
     //
+    //        } catch (ClientAbortException e) {
+    //            log.warn("客户端中止下载，key: {}", key);
     //        } catch (IOException e) {
-    //            log.error(String.format("【云存储】获取文件出错,key: %s", key), e);
-    //            throw new Exception(e.getLocalizedMessage());
+    //            log.error("文件下载失败，key: {}", key, e);
+    //            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件下载失败");
+    //        } catch (Exception e) {
+    //            log.error("未知错误，key: {}", key, e);
+    //            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "未知错误：" + e.getMessage());
     //        }
     //    }
+
     @CrossOrigin(origins = "*")
     @GetMapping("/tempview")
     public void getUrl(
@@ -179,12 +224,12 @@ public class FileDetailController {
         }
 
         // 签名校验
-        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
-        String md5 = SecureUtil.md5(raw);
-        if (!Objects.equals(md5, signature)) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "文档临时访问链接参数非法");
-            return;
-        }
+        //        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+        //        String md5 = SecureUtil.md5(raw);
+        //        if (!Objects.equals(md5, signature)) {
+        //            response.sendError(HttpServletResponse.SC_FORBIDDEN, "文档临时访问链接签名参数非法");
+        //            return;
+        //        }
 
         // 过期时间校验
         if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
@@ -192,42 +237,70 @@ public class FileDetailController {
             return;
         }
 
-        // 设置下载响应头
+        // 对客户端传入的 key 做 URL 解码
+        String decodedKey = URLDecoder.decode(key, "UTF-8");
+
+        // 拆分出文件名和文件路径
+        String filename = decodedKey.substring(decodedKey.lastIndexOf(StringPool.SLASH) + 1);
+        String filePath = decodedKey.substring(0, decodedKey.lastIndexOf(StringPool.SLASH) + 1);
         response.setContentType("application/octet-stream");
-        String filename = key.substring(key.lastIndexOf(StringPool.SLASH) + 1);
 
+        // 下载模式
         if (Objects.equals(DownloadFlagEnum.DOWNLOAD.value(), downloadFlag)) {
-            // 下载模式
             response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
-        } else {
-            // 预览模式（也可以省略不设置）
-            response.setHeader("Content-Disposition", "inline;filename=" + URLEncoder.encode(filename, "UTF-8"));
-        }
 
-        try {
-            FileStorage fileStorage = fileStorageService.getFileStorage(platform);
-            if (fileStorage instanceof LocalPlusFileStorage) {
-                FileInfo fileInfo = new FileInfo();
-                fileInfo.setPath(key.substring(0, key.lastIndexOf(filename)));
-                fileInfo.setFilename(filename);
-                fileInfo.setPlatform(platform);
-                fileInfo.setContentType("application/dicom");
-                fileInfo.setExt("dcm");
+            try {
+                FileStorage fileStorage = fileStorageService.getFileStorage(platform);
+                if (fileStorage instanceof LocalPlusFileStorage) {
+                    FileInfo fileInfo = new FileInfo();
+                    fileInfo.setPath(filePath);
+                    fileInfo.setFilename(filename);
+                    fileInfo.setPlatform(platform);
+                    fileInfo.setContentType("application/dicom");
+                    fileInfo.setExt("dcm");
 
-                // 下载并写入响应
-                fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
-            } else {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "不支持的存储平台类型");
+                    fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
+                } else {
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "不支持的存储平台类型");
+                }
+
+            } catch (Exception e) {
+                log.error("下载失败", e);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载失败");
             }
+        }
+        // 预览模式 → 转为内部调用 downloadFlag=1
+        else {
+            int forceDownloadFlag = 1;
+            String newRaw = forceDownloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+            String newSignature = SecureUtil.md5(newRaw);
+            String forwardUrl = String.format(
+                    "%s/xfile/tempview?downloadFlag=%d&key=%s&expire=%d&signature=%s&platform=%s",
+                    "http://172.16.120.201:12004",
+                    forceDownloadFlag,
+                    URLEncoder.encode(key, "UTF-8"),
+                    expire,
+                    newSignature,
+                    platform);
 
-        } catch (ClientAbortException e) {
-            log.warn("客户端中止下载，key: {}", key);
-        } catch (IOException e) {
-            log.error("文件下载失败，key: {}", key, e);
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件下载失败");
-        } catch (Exception e) {
-            log.error("未知错误，key: {}", key, e);
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "未知错误：" + e.getMessage());
+            try {
+                // 调用自身接口获取资源流
+                ResponseEntity<byte[]> entity = restTemplateStorage.exchange(
+                        forwardUrl, HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), byte[].class);
+
+                if (entity.getStatusCode().is2xxSuccessful() && entity.getBody() != null) {
+                    byte[] body = entity.getBody();
+                    try (ServletOutputStream os = response.getOutputStream()) {
+                        os.write(body);
+                    }
+                } else {
+                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "内部重定向失败");
+                }
+
+            } catch (Exception e) {
+                log.error("预览转下载失败", e);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "预览转下载失败");
+            }
         }
     }
 
