@@ -76,9 +76,10 @@ public class FileStorageAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public FileDetailController fileDetailController(FileStorageService fileStorageService) {
+    public FileDetailController fileDetailController(
+            FileStorageService fileStorageService, SpringFileStorageProperties fileStorageProperties) {
         FileDetailController fileDetailController = new FileDetailController();
-        //        fileDetailController.setSpringFileStorageProperties(fileStorageProperties);
+        fileDetailController.setSpringFileStorageProperties(fileStorageProperties);
         fileDetailController.setFileStorageService(fileStorageService);
         return fileDetailController;
     }

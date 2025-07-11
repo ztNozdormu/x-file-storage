@@ -22,6 +22,7 @@ import org.dromara.x.file.storage.core.file.MultipartFormDataReader;
 import org.dromara.x.file.storage.core.hash.HashInfo;
 import org.dromara.x.file.storage.core.platform.FileStorage;
 import org.dromara.x.file.storage.core.platform.LocalPlusFileStorage;
+import org.dromara.x.file.storage.spring.SpringFileStorageProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -40,8 +41,8 @@ public class FileDetailController {
     @Autowired
     private FileStorageService fileStorageService;
 
-    //    @Autowired
-    //    private SpringFileStorageProperties fileStorageProperties;
+    @Autowired
+    private SpringFileStorageProperties fileStorageProperties;
 
     @Autowired
     private RestTemplate restTemplateStorage;
@@ -50,10 +51,9 @@ public class FileDetailController {
         this.fileStorageService = fileStorageService;
     }
 
-    //    @Autowired
-    //    public void setSpringFileStorageProperties(SpringFileStorageProperties fileStorageProperties) {
-    //        this.fileStorageProperties = fileStorageProperties;
-    //    }
+    public void setSpringFileStorageProperties(SpringFileStorageProperties fileStorageProperties) {
+        this.fileStorageProperties = fileStorageProperties;
+    }
 
     /**
      * 上传文件，成功返回文件 url
@@ -223,13 +223,13 @@ public class FileDetailController {
             return;
         }
 
-        // 签名校验
-        //        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
-        //        String md5 = SecureUtil.md5(raw);
-        //        if (!Objects.equals(md5, signature)) {
-        //            response.sendError(HttpServletResponse.SC_FORBIDDEN, "文档临时访问链接签名参数非法");
-        //            return;
-        //        }
+        // 签名校验（建议恢复）
+        // String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+        // String md5 = SecureUtil.md5(raw);
+        // if (!Objects.equals(md5, signature)) {
+        //     response.sendError(HttpServletResponse.SC_FORBIDDEN, "签名不合法");
+        //     return;
+        // }
 
         // 过期时间校验
         if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
@@ -237,17 +237,18 @@ public class FileDetailController {
             return;
         }
 
-        // 对客户端传入的 key 做 URL 解码
+        // 对客户端传入的 key 做 URL 解码（防止前端 encode 两次）
         String decodedKey = URLDecoder.decode(key, "UTF-8");
 
-        // 拆分出文件名和文件路径
+        // 拆分文件路径和文件名
         String filename = decodedKey.substring(decodedKey.lastIndexOf(StringPool.SLASH) + 1);
         String filePath = decodedKey.substring(0, decodedKey.lastIndexOf(StringPool.SLASH) + 1);
-        response.setContentType("application/octet-stream");
 
         // 下载模式
         if (Objects.equals(DownloadFlagEnum.DOWNLOAD.value(), downloadFlag)) {
+            response.setContentType("application/octet-stream");
             response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
+            response.setHeader("Content-Encoding", "identity");
 
             try {
                 FileStorage fileStorage = fileStorageService.getFileStorage(platform);
@@ -256,10 +257,14 @@ public class FileDetailController {
                     fileInfo.setPath(filePath);
                     fileInfo.setFilename(filename);
                     fileInfo.setPlatform(platform);
-                    fileInfo.setContentType("application/dicom");
-                    fileInfo.setExt("dcm");
+                    //                    fileInfo.setContentType("application/dicom");
+                    //                    fileInfo.setExt("dcm");
 
-                    fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
+                    // 下载并写入原始字节流
+                    try (ServletOutputStream os = response.getOutputStream()) {
+                        fileStorageService.download(fileInfo).outputStream(os);
+                    }
+
                 } else {
                     response.sendError(HttpServletResponse.SC_BAD_REQUEST, "不支持的存储平台类型");
                 }
@@ -268,15 +273,15 @@ public class FileDetailController {
                 log.error("下载失败", e);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载失败");
             }
-        }
-        // 预览模式 → 转为内部调用 downloadFlag=1
-        else {
+
+        } else {
+            // 预览模式：内部转发为下载（downloadFlag=1）
             int forceDownloadFlag = 1;
             String newRaw = forceDownloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
             String newSignature = SecureUtil.md5(newRaw);
             String forwardUrl = String.format(
                     "%s/xfile/tempview?downloadFlag=%d&key=%s&expire=%d&signature=%s&platform=%s",
-                    "http://172.16.120.201:12004",
+                    fileStorageProperties.getLocalPlus().get(0).getRemoteDomain(),
                     forceDownloadFlag,
                     URLEncoder.encode(key, "UTF-8"),
                     expire,
@@ -284,18 +289,23 @@ public class FileDetailController {
                     platform);
 
             try {
-                // 调用自身接口获取资源流
                 ResponseEntity<byte[]> entity = restTemplateStorage.exchange(
                         forwardUrl, HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), byte[].class);
 
                 if (entity.getStatusCode().is2xxSuccessful() && entity.getBody() != null) {
-                    // 设置文件名，让浏览器弹下载框
+                    byte[] body = entity.getBody();
+
+                    // 关键头部设置
+                    response.setContentType("application/octet-stream");
                     response.setHeader(
                             "Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
-                    byte[] body = entity.getBody();
+                    response.setHeader("Content-Encoding", "identity");
+                    response.setContentLength(body.length);
+
                     try (ServletOutputStream os = response.getOutputStream()) {
                         os.write(body);
                     }
+
                 } else {
                     response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "内部重定向失败");
                 }
@@ -306,6 +316,109 @@ public class FileDetailController {
             }
         }
     }
+    //
+    //    @CrossOrigin(origins = "*")
+    //    @GetMapping("/tempview")
+    //    public void getUrl(
+    //            @RequestParam("downloadFlag") Integer downloadFlag,
+    //            @RequestParam("key") String key,
+    //            @RequestParam("expire") Long expire,
+    //            @RequestParam("signature") String signature,
+    //            @RequestParam("platform") String platform,
+    //            HttpServletResponse response)
+    //            throws IOException {
+    //
+    //        // 参数校验
+    //        if (expire == null || downloadFlag == null || StringUtils.isBlank(key) || StringUtils.isBlank(signature))
+    // {
+    //            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "参数非法");
+    //            return;
+    //        }
+    //
+    //        // 签名校验
+    //        //        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+    //        //        String md5 = SecureUtil.md5(raw);
+    //        //        if (!Objects.equals(md5, signature)) {
+    //        //            response.sendError(HttpServletResponse.SC_FORBIDDEN, "文档临时访问链接签名参数非法");
+    //        //            return;
+    //        //        }
+    //
+    //        // 过期时间校验
+    //        if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
+    //            response.sendError(HttpServletResponse.SC_GONE, "文档临时访问链接已过期");
+    //            return;
+    //        }
+    //
+    //        // 对客户端传入的 key 做 URL 解码
+    //        String decodedKey = URLDecoder.decode(key, "UTF-8");
+    //
+    //        // 拆分出文件名和文件路径
+    //        String filename = decodedKey.substring(decodedKey.lastIndexOf(StringPool.SLASH) + 1);
+    //        String filePath = decodedKey.substring(0, decodedKey.lastIndexOf(StringPool.SLASH) + 1);
+    //        response.setContentType("application/octet-stream");
+    //
+    //        // 下载模式
+    //        if (Objects.equals(DownloadFlagEnum.DOWNLOAD.value(), downloadFlag)) {
+    //            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename,
+    // "UTF-8"));
+    //
+    //            try {
+    //                FileStorage fileStorage = fileStorageService.getFileStorage(platform);
+    //                if (fileStorage instanceof LocalPlusFileStorage) {
+    //                    FileInfo fileInfo = new FileInfo();
+    //                    fileInfo.setPath(filePath);
+    //                    fileInfo.setFilename(filename);
+    //                    fileInfo.setPlatform(platform);
+    //                    fileInfo.setContentType("application/dicom");
+    //                    fileInfo.setExt("dcm");
+    //
+    //                    fileStorageService.download(fileInfo).outputStream(response.getOutputStream());
+    //                } else {
+    //                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "不支持的存储平台类型");
+    //                }
+    //
+    //            } catch (Exception e) {
+    //                log.error("下载失败", e);
+    //                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载失败");
+    //            }
+    //        }
+    //        // 预览模式 → 转为内部调用 downloadFlag=1
+    //        else {
+    //            int forceDownloadFlag = 1;
+    //            String newRaw = forceDownloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+    //            String newSignature = SecureUtil.md5(newRaw);
+    //            String forwardUrl = String.format(
+    //                    "%s/xfile/tempview?downloadFlag=%d&key=%s&expire=%d&signature=%s&platform=%s",
+    //                    "http://172.16.120.201:12004",
+    //                    forceDownloadFlag,
+    //                    URLEncoder.encode(key, "UTF-8"),
+    //                    expire,
+    //                    newSignature,
+    //                    platform);
+    //
+    //            try {
+    //                // 调用自身接口获取资源流
+    //                ResponseEntity<byte[]> entity = restTemplateStorage.exchange(
+    //                        forwardUrl, HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), byte[].class);
+    //
+    //                if (entity.getStatusCode().is2xxSuccessful() && entity.getBody() != null) {
+    //                    // 设置文件名，让浏览器弹下载框
+    //                    response.setHeader(
+    //                            "Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
+    //                    byte[] body = entity.getBody();
+    //                    try (ServletOutputStream os = response.getOutputStream()) {
+    //                        os.write(body);
+    //                    }
+    //                } else {
+    //                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "内部重定向失败");
+    //                }
+    //
+    //            } catch (Exception e) {
+    //                log.error("预览转下载失败", e);
+    //                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "预览转下载失败");
+    //            }
+    //        }
+    //    }
 
     // TODO 删除
 }
