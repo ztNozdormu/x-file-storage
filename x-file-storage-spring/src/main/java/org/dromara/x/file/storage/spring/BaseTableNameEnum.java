@@ -21,7 +21,7 @@ public enum BaseTableNameEnum {
 
     PATIENT_REUPLOAD_TASK("patient_reupload_task", true),
 
-    HOS_TASK_FILE_RECORD("hos_task_file_record)", true),
+    HOS_TASK_FILE_RECORD("hos_task_file_record", true),
 
     HOS_FILE_DETAIL("file_detail", true);
 
