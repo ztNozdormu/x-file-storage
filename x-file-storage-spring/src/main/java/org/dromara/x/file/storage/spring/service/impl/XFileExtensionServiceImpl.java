@@ -30,17 +30,18 @@ import org.dromara.x.file.storage.spring.MybatisPlusUtils;
 import org.dromara.x.file.storage.spring.SpringFileStorageProperties;
 import org.dromara.x.file.storage.spring.constant.MetadataKeyConst;
 import org.dromara.x.file.storage.spring.domain.FileDetail;
+import org.dromara.x.file.storage.spring.service.FileDetailService;
 import org.dromara.x.file.storage.spring.service.XFileExtensionService;
 
 @Slf4j
 public class XFileExtensionServiceImpl implements XFileExtensionService {
 
-    private FileDetailServiceImpl fileDetailService;
+    private FileDetailService fileDetailService;
     private FileStorageService fileStorageService;
 
     private SpringFileStorageProperties fileStorageProperties;
 
-    public void setFileDetailService(FileDetailServiceImpl fileDetailService) {
+    public void setFileDetailService(FileDetailService fileDetailService) {
         this.fileDetailService = fileDetailService;
     }
 
@@ -100,6 +101,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
                 detail.setUrl("DICOMURL");
             }
         }
+        detail.setCreateTime(new Date());
         boolean b = fileDetailService.save(detail);
         if (b) {
             return detail.getId();
@@ -268,7 +270,6 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
         } catch (Exception e) {
             log.error("删除文档失败,失败原因{}", e.getMessage());
         }
-
         return false;
     }
 
@@ -430,7 +431,7 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
             } else {
                 info.setUrl(metadata.get(MetadataKeyConst.OSS_PATH_KEY));
             }
-            info.setExt("png");
+            info.setExt("jpeg");
             info.setContentType("image/jpeg");
         }
         if (ImageFileTypeEnum.DICOM.value().toString().equals(metadata.get(MetadataKeyConst.FILE_TYPE_KEY))) {

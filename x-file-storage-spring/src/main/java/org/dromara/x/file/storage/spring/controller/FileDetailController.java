@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -224,12 +226,12 @@ public class FileDetailController {
         }
 
         // 签名校验（建议恢复）
-        // String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
-        // String md5 = SecureUtil.md5(raw);
-        // if (!Objects.equals(md5, signature)) {
-        //     response.sendError(HttpServletResponse.SC_FORBIDDEN, "签名不合法");
-        //     return;
-        // }
+        //        String raw = downloadFlag + expire + key + Constant.FILE_DOWNLOAD_URI_SALT;
+        //        String md5 = SecureUtil.md5(raw);
+        //        if (!Objects.equals(md5, signature)) {
+        //            response.sendError(HttpServletResponse.SC_FORBIDDEN, "签名不合法");
+        //            return;
+        //        }
 
         // 过期时间校验
         if (Instant.ofEpochSecond(expire).isBefore(Instant.now())) {
@@ -244,9 +246,12 @@ public class FileDetailController {
         String filename = decodedKey.substring(decodedKey.lastIndexOf(StringPool.SLASH) + 1);
         String filePath = decodedKey.substring(0, decodedKey.lastIndexOf(StringPool.SLASH) + 1);
 
+        String contentType = Files.probeContentType(Paths.get(filename));
+
         // 下载模式
         if (Objects.equals(DownloadFlagEnum.DOWNLOAD.value(), downloadFlag)) {
-            response.setContentType("application/octet-stream");
+            if (contentType == null) contentType = "application/octet-stream";
+            response.setContentType(contentType);
             response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
             response.setHeader("Content-Encoding", "identity");
 
@@ -257,9 +262,6 @@ public class FileDetailController {
                     fileInfo.setPath(filePath);
                     fileInfo.setFilename(filename);
                     fileInfo.setPlatform(platform);
-                    //                    fileInfo.setContentType("application/dicom");
-                    //                    fileInfo.setExt("dcm");
-
                     // 下载并写入原始字节流
                     try (ServletOutputStream os = response.getOutputStream()) {
                         fileStorageService.download(fileInfo).outputStream(os);
@@ -296,7 +298,8 @@ public class FileDetailController {
                     byte[] body = entity.getBody();
 
                     // 关键头部设置
-                    response.setContentType("application/octet-stream");
+                    if (contentType == null) contentType = "application/octet-stream";
+                    response.setContentType(contentType);
                     response.setHeader(
                             "Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
                     response.setHeader("Content-Encoding", "identity");

@@ -1,8 +1,11 @@
 package org.dromara.x.file.storage.spring.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.dromara.x.file.storage.core.FileInfo;
+import org.dromara.x.file.storage.spring.domain.FileDetail;
 
-public interface FileDetailService {
+public interface FileDetailService extends IService<FileDetail> {
 
     /**
      * 保存文档信息到指定表
@@ -34,4 +37,28 @@ public interface FileDetailService {
      * @param tableSuffix  表后缀名称 hospitalId+"_"+year
      */
     boolean delete(String url, String tableSuffix);
+
+    /**
+     * 文档信息对象--文档具体信息转换
+     * @param info FileInfo 文档信息对象
+     * @return FileDetail   文档具体信息对象
+     * @throws JsonProcessingException
+     */
+    FileDetail toFileDetail(FileInfo info) throws JsonProcessingException;
+
+    /**
+     * 文档具体信息--文档信息对象转换
+     * @param detail
+     * @return
+     * @throws JsonProcessingException
+     */
+    FileInfo toFileInfo(FileDetail detail) throws JsonProcessingException;
+
+    /**
+     * 将指定值转换为json字符串
+     * @param value 指定的数据对象
+     * @return
+     * @throws JsonProcessingException
+     */
+    String valueToJson(Object value) throws JsonProcessingException;
 }

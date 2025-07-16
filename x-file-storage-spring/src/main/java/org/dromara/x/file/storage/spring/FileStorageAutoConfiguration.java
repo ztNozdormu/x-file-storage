@@ -24,6 +24,7 @@ import org.dromara.x.file.storage.spring.controller.FileDetailController;
 import org.dromara.x.file.storage.spring.dao.FileDetailMapper;
 import org.dromara.x.file.storage.spring.dao.FilePartDetailMapper;
 import org.dromara.x.file.storage.spring.file.MultipartFileWrapperAdapter;
+import org.dromara.x.file.storage.spring.service.FileDetailService;
 import org.dromara.x.file.storage.spring.service.XFileExtensionService;
 import org.dromara.x.file.storage.spring.service.impl.FileDetailServiceImpl;
 import org.dromara.x.file.storage.spring.service.impl.FilePartDetailServiceImpl;
@@ -67,7 +68,7 @@ public class FileStorageAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public FileDetailServiceImpl fileDetailService(
+    public FileDetailService fileDetailService(
             FilePartDetailServiceImpl filePartDetailService, FileDetailMapper fileDetailMapper) {
         FileDetailServiceImpl service = new FileDetailServiceImpl(fileDetailMapper);
         service.setFilePartDetailService(filePartDetailService);
@@ -88,7 +89,7 @@ public class FileStorageAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public XFileExtensionService xFileExtensionService(
-            FileDetailServiceImpl fileDetailService,
+            FileDetailService fileDetailService,
             FileStorageService fileStorageService,
             SpringFileStorageProperties fileStorageProperties) {
         XFileExtensionServiceImpl impl = new XFileExtensionServiceImpl();

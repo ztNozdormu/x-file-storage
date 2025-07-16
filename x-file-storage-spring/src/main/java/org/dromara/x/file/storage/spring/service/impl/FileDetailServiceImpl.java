@@ -104,6 +104,7 @@ public class FileDetailServiceImpl extends ServiceImpl<FileDetailMapper, FileDet
     /**
      * 将 FileInfo 转为 FileDetail
      */
+    @Override
     public FileDetail toFileDetail(FileInfo info) throws JsonProcessingException {
         FileDetail detail = BeanUtil.copyProperties(
                 info, FileDetail.class, "metadata", "userMetadata", "thMetadata", "thUserMetadata", "attr", "hashInfo");
@@ -123,6 +124,7 @@ public class FileDetailServiceImpl extends ServiceImpl<FileDetailMapper, FileDet
     /**
      * 将 FileDetail 转为 FileInfo
      */
+    @Override
     public FileInfo toFileInfo(FileDetail detail) throws JsonProcessingException {
         FileInfo info = BeanUtil.copyProperties(
                 detail, FileInfo.class, "metadata", "userMetadata", "thMetadata", "thUserMetadata", "attr", "hashInfo");
@@ -142,6 +144,7 @@ public class FileDetailServiceImpl extends ServiceImpl<FileDetailMapper, FileDet
     /**
      * 将指定值转换成 json 字符串
      */
+    @Override
     public String valueToJson(Object value) throws JsonProcessingException {
         if (value == null) return null;
         return objectMapper.writeValueAsString(value);
