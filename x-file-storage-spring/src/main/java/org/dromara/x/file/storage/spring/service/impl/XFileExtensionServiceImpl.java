@@ -266,7 +266,10 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
             autoChangeTableName(storageCode);
             FileInfo fileInfo = fileDetailService.toFileInfo(
                     fileDetailService.getOne(new QueryWrapper<FileDetail>().eq(FileDetail.COL_ID, storageCode)));
-            return fileStorageService.delete(fileInfo);
+            if (this.delete(fileInfo)) {
+                return fileDetailService.removeById(fileInfo.getId());
+            }
+            return false;
         } catch (Exception e) {
             log.error("删除文档失败,失败原因{}", e.getMessage());
         }
@@ -294,11 +297,12 @@ public class XFileExtensionServiceImpl implements XFileExtensionService {
                 try {
                     fileInfo.setPath(StrUtil.sub(ossKey, 0, ossKey.lastIndexOf("/") + 1));
                     fileInfo.setFilename(FileUtil.getName(ossKey));
-                    delete(fileInfo);
+                    this.delete(fileInfo);
                 } catch (Exception e) {
                     log.warn("批量删除失败：类型={}，ossKey={}，错误={}", fileTypeEnum.name(), ossKey, e.getMessage(), e);
                 }
             }
+            fileDetailService.removeById(fileInfo.getId());
         } catch (Exception e) {
             log.error("XFILE 批量删除失败，storageCode={}，类型={}，错误={}", storageCode, fileTypeEnum.name(), e.getMessage(), e);
         }
