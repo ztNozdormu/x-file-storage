@@ -1,18 +1,18 @@
 package org.dromara.x.file.storage.core.client;
 
 
-import io.minio.MinioAsyncClient;
 import io.minio.S3Base;
-import io.minio.credentials.Provider;
-import io.minio.credentials.StaticProvider;
 import io.minio.http.HttpUtils;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 public class RemoteProxyClient {
 
+    private String endpoint;
+    private String apiKey;
     private final OkHttpClient httpClient;
 
     private RemoteProxyClient(String endpoint, String apiKey, OkHttpClient httpClient) {
@@ -21,44 +21,10 @@ public class RemoteProxyClient {
         this.httpClient = httpClient != null ? httpClient : new OkHttpClient.Builder().retryOnConnectionFailure(true).build();
     }
 
-//    public static Builder builder() {
-//        return new Builder();
-//    }
-//
-//    public static final class Builder {
-//        private String endpoint;
-//        private String apiKey;
-//        private OkHttpClient httpClient;
-//
-//        public Builder endpoint(String endpoint) {
-//            this.endpoint = endpoint;
-//            return this;
-//        }
-//
-//        public Builder credentials(String accessKey, String secretKey) {
-//            // 简化：直接使用 accessKey 作为 API key，如果你有签名算法可替换这里
-//            this.apiKey = accessKey;
-//            return this;
-//        }
-//
-//        public Builder httpClient(OkHttpClient httpClient) {
-//            this.httpClient = httpClient;
-//            return this;
-//        }
-//
-//        public RemoteProxyClient build() {
-//            if (endpoint == null || apiKey == null) {
-//                throw new IllegalStateException("endpoint and credentials must not be null");
-//            }
-//            return new RemoteProxyClient(endpoint, apiKey, httpClient);
-//        }
-//    }
-//    public static MinioAsyncClient.Builder builder() {
-//        return new MinioAsyncClient.Builder();
-//    }
-
     public static final class Builder {
         private HttpUrl baseUrl;
+
+        private String apiKey;
 
         private OkHttpClient httpClient;
 
@@ -69,7 +35,9 @@ public class RemoteProxyClient {
         private void setBaseUrl(HttpUrl url) {
             this.baseUrl = url;
         }
-
+        private void setApiKey(String apiKey) {
+            this.apiKey = apiKey;
+        }
         public RemoteProxyClient.Builder endpoint(String endpoint) {
             this.setBaseUrl(HttpUtils.getBaseUrl(endpoint));
             return this;
@@ -108,9 +76,9 @@ public class RemoteProxyClient {
             HttpUtils.validateNotNull(this.baseUrl, "endpoint");
 
             if (this.httpClient == null) {
-                this.httpClient = HttpUtils.newDefaultHttpClient(S3Base.DEFAULT_CONNECTION_TIMEOUT, S3Base.DEFAULT_CONNECTION_TIMEOUT, S3Base.DEFAULT_CONNECTION_TIMEOUT);
+                this.httpClient = HttpUtils.newDefaultHttpClient(TimeUnit.MINUTES.toMillis(5L), TimeUnit.MINUTES.toMillis(5L), TimeUnit.MINUTES.toMillis(5L));
             }
-            return new RemoteProxyClient(this.baseUrl, this.httpClient);
+            return new RemoteProxyClient(this.baseUrl,this.apiKey, this.httpClient);
         }
     }
 }
