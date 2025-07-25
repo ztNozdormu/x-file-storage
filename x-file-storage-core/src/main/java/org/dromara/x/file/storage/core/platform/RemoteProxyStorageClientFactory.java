@@ -1,5 +1,6 @@
 package org.dromara.x.file.storage.core.platform;
 
+import io.minio.http.HttpUtils;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,7 +33,7 @@ public class RemoteProxyStorageClientFactory implements FileStorageClientFactory
             synchronized (this) {
                 if (client == null) {
                     client = new RemoteProxyClient.Builder()
-                            .endpoint(endPoint)
+                            .endpoint(HttpUtils.getBaseUrl(endPoint))
                             .build();
                 }
             }

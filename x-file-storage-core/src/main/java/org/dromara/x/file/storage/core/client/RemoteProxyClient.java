@@ -1,7 +1,6 @@
 package org.dromara.x.file.storage.core.client;
 
 
-import io.minio.S3Base;
 import io.minio.http.HttpUtils;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -11,11 +10,11 @@ import java.util.concurrent.TimeUnit;
 
 public class RemoteProxyClient {
 
-    private String endpoint;
+    private HttpUrl endpoint;
     private String apiKey;
     private final OkHttpClient httpClient;
 
-    private RemoteProxyClient(String endpoint, String apiKey, OkHttpClient httpClient) {
+    private RemoteProxyClient(HttpUrl endpoint, String apiKey, OkHttpClient httpClient) {
         this.endpoint = endpoint;
         this.apiKey = apiKey;
         this.httpClient = httpClient != null ? httpClient : new OkHttpClient.Builder().retryOnConnectionFailure(true).build();
@@ -80,5 +79,6 @@ public class RemoteProxyClient {
             }
             return new RemoteProxyClient(this.baseUrl,this.apiKey, this.httpClient);
         }
+
     }
 }
